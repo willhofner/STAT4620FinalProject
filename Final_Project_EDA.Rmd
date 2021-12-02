@@ -1,0 +1,272 @@
+---
+title: "Final Project EDA"
+author: "Will Hofner.4, Sammy Kapur.54, & Josh Riebe.10"
+date: "11/12/2021"
+output: html_document
+---
+  
+### *Exploratory Data Analysis on the The Telco Churn Dataset*  
+  
+```{r}
+#1-time install
+#install.packages("corrplot")
+
+#load data
+load("C:\\Users\\wshof\\Desktop\\FALL CLASSES\\Statistical Learning\\Final Project\\TelcoChurn\\telco.RData")
+library(glmnet)
+library(corrplot)
+set.seed(1)
+```
+
+
+```{r}
+#variable-by-variable analysis
+length(train$customerID)
+length(unique(train$customerID))
+```
+
+
+```{r}
+table(train$gender)
+table(train$SeniorCitizen)
+table(train$Partner)
+table(train$Dependents)
+table(train$tenure)
+table(train$PhoneService)
+table(train$MultipleLines)
+table(train$InternetService)
+table(train$OnlineSecurity)
+table(train$OnlineBackup)
+table(train$DeviceProtection)
+table(train$TechSupport)
+table(train$StreamingTV)
+table(train$StreamingMovies)
+table(train$Contract)
+table(train$PaperlessBilling)
+table(train$PaymentMethod)
+boxplot(train$MonthlyCharges)
+boxplot(train$TotalCharges)
+table(train$Churn)
+```
+  
+***Initial Predictor Comments***  
+**Customer ID**: Contains 5,634 entries, all of which are unique from each other, making it a valid unique ID.
+**Gender**:	No unexpected/missing terms  
+**Senior Citizen Status**: No unexpected/missing terms  
+**Partner**: No unexpected/missing terms  
+**Dependents**: No unexpected/missing terms  
+**Tenure**: The maximum value here is 72 months, and there is a sharp increase in the number of occurences of 70, 71, and 72. Makes me think that 72 is the largest possible entry in their data entry system and the count for 72 may really represent 72 and above.  
+**Phone Service**: No unexpected/missing terms  
+**Multiple Lines**: No unexpected/missing terms  
+**Internet Service**: No unexpected/missing terms  
+**Online Security**: No unexpected/missing terms  
+**Online Backup**: No unexpected/missing terms  
+**Device Protection**: No unexpected/missing terms  
+**Tech Support**: No unexpected/missing terms  
+**Streaming TV**: No unexpected/missing terms  
+**Streaming Movies**: No unexpected/missing terms  
+**Contract**: No unexpected/missing terms. Majority in monthly contract.  
+**Paperless Billing**: No unexpected/missing terms  
+**Payment Method**: No unexpected/missing terms. I suspect the 'mailed check' population to be older and thus less likely to churn.  
+**Monthly Charges**: No unexpected/missing terms  
+**Churn**: No unexpected/missing terms. 4,134 no vs. 1,500 yes  
+  
+---
+  
+***Are there any problems with the data?***  
+We did not find any "N/A" or missing data in our data set. All of the data looks correctly formatted except possibly 'Tenure.' As explained above, with a sharp increase at the highest values of the predictor, we suspect user entry error of some sort.  
+  
+---
+  
+***What kind of variables do you have?***  
+While many of the data is input as strings, the underlying type of each variable is as follows:  
+**Gender**:	boolean (male vs. female)  
+**Senior Citizen Status**: boolean (senior vs. not a senior)  
+**Partner**: boolean (married vs. not married)  
+**Dependents**: boolean (no dependents vs. any number of dependents)  
+**Tenure**: ordinal numeric   
+**Phone Service**: boolean (has phone service vs. does not have phone service)  
+**Multiple Lines**: categorical (boolean if you remove those without any phone service)  
+**Internet Service**: categorical  
+**Online Security**: categorical (boolean if you remove those without any internet service)    
+**Online Backup**: categorical (boolean if you remove those without any internet service)    
+**Device Protection**: categorical (boolean if you remove those without any internet service)  
+**Tech Support**: categorical (boolean if you remove those without any internet service)  
+**Streaming TV**: categorical (boolean if you remove those without any internet service)  
+**Streaming Movies**: categorical (boolean if you remove those without any internet service)  
+**Contract**: ordinal categorical  
+**Paperless Billing**: boolean (paperless vs. not paperless)  
+**Payment Method**: categorical  
+**Monthly Charges**: ordinal numeric  
+**Churn**: boolean (churned vs. stayed loyal)  
+  
+In conclusion, we may have to recode many of the variables to have R treat them as true boolean variables. Additionally, within 'Internet Service' and 'Phone Service' there are several other predictors regarding add-ons that are boolean when you ignore the customers without the original package already. In the future, there are a couple different ways for us to look at those data points. We could remove those without the original package and treat the add-on as a boolean variable to see how it affects customer churn. We could also group the customers without the original package in with those without the add-on and treat it as a boolean variable that way.
+  
+```{r}
+#recode the boolean variables without modifying the original data.frame
+dataCopy <- data.frame(train)
+```
+```{r}
+#gender
+len <- length(dataCopy$gender)
+for(i in 1:len) {
+  if(dataCopy$gender[i] == "Female"){
+    dataCopy$gender[i] = 0
+  }
+  else{
+    dataCopy$gender[i] = 1
+  }
+}
+table(train$gender)
+table(dataCopy$gender)
+
+#churn
+for(i in 1:len) {
+  if(dataCopy$Churn[i] == "No"){
+    dataCopy$Churn[i] = 0
+  }
+  else{
+    dataCopy$Churn[i] = 1
+  }
+}
+table(train$Churn)
+table(dataCopy$Churn)
+
+#partner
+for(i in 1:len) {
+  if(dataCopy$Partner[i] == "No"){
+    dataCopy$Partner[i] = 0
+  }
+  else{
+    dataCopy$Partner[i] = 1
+  }
+}
+table(train$Partner)
+table(dataCopy$Partner)
+
+#dependents
+for(i in 1:len) {
+  if(dataCopy$Dependents[i] == "No"){
+    dataCopy$Dependents[i] = 0
+  }
+  else{
+    dataCopy$Dependents[i] = 1
+  }
+}
+table(train$Dependents)
+table(dataCopy$Dependents)
+
+#phone service
+for(i in 1:len) {
+  if(dataCopy$PhoneService[i] == "No"){
+    dataCopy$PhoneService[i] = 0
+  }
+  else{
+    dataCopy$PhoneService[i] = 1
+  }
+}
+table(train$PhoneService)
+table(dataCopy$PhoneService)
+
+#internet service
+#for(i in 1:len) {
+#  if(dataCopy$InternetService[i] == "No"){
+#    dataCopy$InternetService[i] = 0
+#  }
+#  else{
+#    dataCopy$InternetService[i] = 1       #DSL & Fiber Optic = "Yes"
+#  }
+#}
+#table(train$InternetService)
+#table(dataCopy$InternetService)
+
+#paperless billing
+for(i in 1:len) {
+  if(dataCopy$PaperlessBilling[i] == "No"){
+    dataCopy$PaperlessBilling[i] = 0
+  }
+  else{
+    dataCopy$PaperlessBilling[i] = 1
+  }
+}
+table(train$PaperlessBilling)
+table(dataCopy$PaperlessBilling)
+```
+  
+---
+  
+***Does there appear to be potentially problematic collinearity amongst the predictor variables?***  
+```{r}
+#roundabout way to load our new booleans as numeric values
+dataCopy2 <- data.frame(dataCopy)
+dataCopy2$Churn <- as.numeric(dataCopy$Churn)
+dataCopy2$gender <- as.numeric(dataCopy$gender)
+dataCopy2$Partner <- as.numeric(dataCopy$Partner)
+dataCopy2$Dependents <- as.numeric(dataCopy$Dependents)
+dataCopy2$PhoneService <- as.numeric(dataCopy$PhoneService)
+dataCopy2$PaperlessBilling <- as.numeric(dataCopy$PaperlessBilling)
+
+#test for data loss
+#table(train$PhoneService)
+#table(dataCopy$PhoneService)
+#table(dataCopy2$PhoneService)
+
+#copy back to dataCopy
+dataCopy <- data.frame(dataCopy2)
+```
+```{r}
+#selecting subset of numeric data
+numData <- subset(dataCopy, select = c("Churn", "gender", "Partner", "Dependents", "PhoneService", "PaperlessBilling", "MonthlyCharges", "TotalCharges"))
+
+#covariance matrix
+pairs(numData)
+
+#correlation plot
+correlations <- cor(numData)
+corrplot(correlations, method = "circle")
+```
+  
+With the mostly boolean nature of our numeric data, the covariance matrix is tough to gain insight from. However, the correlation plot gives us some helpful clues. The bigger the circle, the stronger the correlation. The strongest correlation can be found between 'Partner' and 'Dependents'. With most parents having a partner, this makes sense. The next strongest correlations are those between 'Monthly Charges', 'Phone Service', and 'Paperless Billing'. While the 'Paperless Billing' may be a coincidence, it makes sense that those subscribed to a phone bill would be paying more in monthly payments. While we will avoid putting both 'Partner' and 'Dependents' both as predictors on our final model, there does not appear to be any problematic collinearity.
+    
+---
+    
+***Can you detect early signs of what variable are likely to be important in predicting the response?***  
+```{r}
+#boolean plots
+plot(dataCopy$gender, dataCopy$Churn)
+abline(lm(dataCopy$Churn ~ dataCopy$gender))
+
+plot(dataCopy$Partner, dataCopy$Churn)
+abline(lm(dataCopy$Churn ~ dataCopy$Partner))
+
+plot(dataCopy$Dependents, dataCopy$Churn)
+abline(lm(dataCopy$Churn ~ dataCopy$Dependents))
+
+plot(dataCopy$PhoneService, dataCopy$Churn)
+abline(lm(dataCopy$Churn ~ dataCopy$PhoneService))
+
+plot(dataCopy$PaperlessBilling, dataCopy$Churn)
+abline(lm(dataCopy$Churn ~ dataCopy$PaperlessBilling))
+
+plot(dataCopy$MonthlyCharges, dataCopy$Churn)
+abline(lm(dataCopy$Churn ~ dataCopy$MonthlyCharges))
+
+plot(dataCopy$TotalCharges, dataCopy$Churn)
+abline(lm(dataCopy$Churn ~ dataCopy$TotalCharges))
+```
+  
+Based on these very basic plots, it is clear that gender has very little to do with churn tendency, and we would be surprised if it ended up in our final model. As stated before, either 'Partner' or 'Dependents', but not both, could be important. Based on the more dramatic slope in these plots, 'Monthly Charges' is also a front runner for model building. Additionally, while the specific add-on statuses may not be terribly important, we believe the total number of add-on services may be a good calculation to make - i.e. the more add-ons, the less likely to churn. While the dubious speculation is fun, we won't know for sure until we start model building.
+  
+---
+  
+***What are the key figures or numerical summaries that describe the most important aspects of the data?***  
+Every chart and graph included thus far in the EDA has given great insight into the nature of this dataset. If we had to pick some of the most valuable, we would say (1) the counts of the boolean variables given in our first R code block to visualize the distributions, (2) the correlation plot of the numeric variables to see the interactions between predictors, and (3) the histograms of the monthly and total payments to visualize those distributions as well.
+  
+---
+  
+***Does your EDA suggest to you what modeling approaches you should aim to try?***  
+While we plan to try a variety of different classification approaches, we will likely start with logistic regression followed by LDA and KNN while using cross validation anywhere that we can. Additionally, we may try our luck with forward selection stepwise regression or hybrid stepwise regression starting with 'Monthly Payment'.
+  
+---
+  
+  
